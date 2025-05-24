@@ -19,39 +19,39 @@ def is_jetson():
         return False
 
 def get_jetson_gpu_metrics():
-    """Get GPU metrics using jtop for Jetson devices."""
+    """Get GPU metrics using tegrastats for Jetson devices."""
     try:
-        # Run jtop to get GPU metrics
-        result = subprocess.run(['jtop', '-r', '1', '-p', '1'], 
-                              capture_output=True, text=True, timeout=2)
+        # Run tegrastats and get first line using head
+        result = subprocess.run(['tegrastats', '--interval', '1000', '|', 'head', '-n', '1'], 
+                              shell=True, capture_output=True, text=True, timeout=2)
+        print("Raw tegrastats output:", result.stdout)  # Debug print
+        
         if result.returncode == 0:
-            # Parse the output to find GPU information
-            output = result.stdout.strip()
-            gpu_util = 0
-            gpu_mem = 0
+            # Get the output line
+            stats = result.stdout.strip()
+            print("Processing line:", stats)  # Debug print
             
-            for line in output.split('\n'):
-                if 'GPU' in line:
-                    # Try to find GPU utilization
-                    if '%' in line:
-                        try:
-                            gpu_util = float(line.split('%')[0].split()[-1])
-                        except (ValueError, IndexError):
-                            pass
-                    # Try to find GPU memory
-                    if 'MB' in line:
-                        try:
-                            mem_parts = line.split('MB')[0].split()
-                            gpu_mem = float(mem_parts[-1])
-                        except (ValueError, IndexError):
-                            pass
-            
-            return {
-                'gpu_utilization': gpu_util,
-                'gpu_memory_percent': gpu_mem,  # jtop shows memory in MB
-                'gpu_memory_used': gpu_mem,
-                'gpu_memory_total': 0  # Not directly available from jtop
-            }
+            # Extract GR3D_FREQ (GPU usage)
+            if 'GR3D_FREQ' in stats:
+                # Split on GR3D_FREQ and get the part after it
+                gpu_part = stats.split('GR3D_FREQ')[1].split('%')[0].strip()
+                print("Extracted GPU part:", gpu_part)  # Debug print
+                try:
+                    gpu_util = float(gpu_part)
+                    print("Parsed GPU utilization:", gpu_util)  # Debug print
+                    return {
+                        'gpu_utilization': gpu_util,
+                        'gpu_memory_percent': gpu_util,
+                        'gpu_memory_used': 0,
+                        'gpu_memory_total': 0
+                    }
+                except ValueError as e:
+                    print(f"Could not parse GPU value: {gpu_part}, error: {str(e)}")
+            else:
+                print("No GR3D_FREQ found in output")
+        else:
+            print(f"tegrastats command failed with return code: {result.returncode}")
+            print("Error output:", result.stderr)
     except (subprocess.SubprocessError, ValueError) as e:
         print(f"Error getting Jetson GPU metrics: {str(e)}")
     return {'error': 'Failed to get GPU metrics'}
