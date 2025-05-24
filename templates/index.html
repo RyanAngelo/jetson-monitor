@@ -124,6 +124,22 @@
                 <div class="metric-title">GPU Usage</div>
                 <div class="metric-value" id="gpuValue">0%</div>
             </div>
+            <div class="metric-card">
+                <div class="metric-title">GPU Temperature</div>
+                <div class="metric-value" id="gpuTempValue">0°C</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">CPU Temperature</div>
+                <div class="metric-value" id="cpuTempValue">0°C</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">Total Power</div>
+                <div class="metric-value" id="powerValue">0mW</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">GPU Power</div>
+                <div class="metric-value" id="gpuPowerValue">0mW</div>
+            </div>
         </div>
 
         <div class="chart-container">
@@ -216,8 +232,14 @@
                     document.getElementById('memoryValue').textContent = `${data.memory_percent.toFixed(1)}%`;
                     document.getElementById('diskValue').textContent = `${data.disk_percent.toFixed(1)}%`;
                     
-                    const gpuValue = data.gpu_metrics.gpu_utilization || 0;
-                    document.getElementById('gpuValue').textContent = `${gpuValue.toFixed(1)}%`;
+                    const gpuMetrics = data.gpu_metrics;
+                    if (gpuMetrics && !gpuMetrics.error) {
+                        document.getElementById('gpuValue').textContent = `${gpuMetrics.gpu_utilization.toFixed(1)}%`;
+                        document.getElementById('gpuTempValue').textContent = `${gpuMetrics.gpu_temperature?.toFixed(1) || 0}°C`;
+                        document.getElementById('cpuTempValue').textContent = `${gpuMetrics.cpu_temperature?.toFixed(1) || 0}°C`;
+                        document.getElementById('powerValue').textContent = `${gpuMetrics.total_power?.toFixed(0) || 0}mW`;
+                        document.getElementById('gpuPowerValue').textContent = `${gpuMetrics.gpu_power?.toFixed(0) || 0}mW`;
+                    }
                     
                     document.getElementById('timestamp').textContent = `Last updated: ${data.timestamp}`;
 
@@ -227,7 +249,7 @@
                     chartData.datasets[0].data.push(data.cpu_percent);
                     chartData.datasets[1].data.push(data.memory_percent);
                     chartData.datasets[2].data.push(data.disk_percent);
-                    chartData.datasets[3].data.push(gpuValue);
+                    chartData.datasets[3].data.push(gpuMetrics?.gpu_utilization || 0);
 
                     if (chartData.labels.length > maxDataPoints) {
                         chartData.labels.shift();

@@ -35,24 +35,71 @@ def get_jetson_gpu_metrics():
         tegrastats_process.terminate()
         tegrastats_process.wait(timeout=1)
         
+        metrics = {}
+        
         # Extract GR3D_FREQ (GPU usage)
         if 'GR3D_FREQ' in stats:
-            # Split on GR3D_FREQ and get the part after it
             gpu_part = stats.split('GR3D_FREQ')[1].split('%')[0].strip()
-            print("Extracted GPU part:", gpu_part)  # Debug print
             try:
-                gpu_util = float(gpu_part)
-                print("Parsed GPU utilization:", gpu_util)  # Debug print
-                return {
-                    'gpu_utilization': gpu_util,
-                    'gpu_memory_percent': gpu_util,
-                    'gpu_memory_used': 0,
-                    'gpu_memory_total': 0
-                }
+                metrics['gpu_utilization'] = float(gpu_part)
             except ValueError as e:
                 print(f"Could not parse GPU value: {gpu_part}, error: {str(e)}")
-        else:
-            print("No GR3D_FREQ found in output")
+        
+        # Extract temperatures
+        if 'gpu@' in stats:
+            gpu_temp = stats.split('gpu@')[1].split('C')[0]
+            try:
+                metrics['gpu_temperature'] = float(gpu_temp)
+            except ValueError:
+                pass
+        
+        if 'cpu@' in stats:
+            cpu_temp = stats.split('cpu@')[1].split('C')[0]
+            try:
+                metrics['cpu_temperature'] = float(cpu_temp)
+            except ValueError:
+                pass
+        
+        # Extract power information
+        if 'VDD_IN' in stats:
+            power_part = stats.split('VDD_IN')[1].split('mW')[0].strip()
+            try:
+                metrics['total_power'] = float(power_part)
+            except ValueError:
+                pass
+        
+        if 'VDD_CPU_GPU_CV' in stats:
+            gpu_power_part = stats.split('VDD_CPU_GPU_CV')[1].split('mW')[0].strip()
+            try:
+                metrics['gpu_power'] = float(gpu_power_part)
+            except ValueError:
+                pass
+        
+        # Extract RAM information
+        if 'RAM' in stats:
+            ram_part = stats.split('RAM')[1].split('MB')[0].strip()
+            try:
+                used, total = ram_part.split('/')
+                metrics['ram_used'] = float(used)
+                metrics['ram_total'] = float(total)
+                metrics['ram_percent'] = (float(used) / float(total)) * 100
+            except ValueError:
+                pass
+        
+        # Extract CPU usage for each core
+        if 'CPU [' in stats:
+            cpu_part = stats.split('CPU [')[1].split(']')[0]
+            cpu_cores = []
+            for core in cpu_part.split(','):
+                try:
+                    usage = float(core.split('@')[0].strip('%'))
+                    freq = float(core.split('@')[1])
+                    cpu_cores.append({'usage': usage, 'frequency': freq})
+                except (ValueError, IndexError):
+                    continue
+            metrics['cpu_cores'] = cpu_cores
+        
+        return metrics
             
     except (subprocess.SubprocessError, ValueError) as e:
         print(f"Error getting Jetson GPU metrics: {str(e)}")
