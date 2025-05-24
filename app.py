@@ -21,9 +21,9 @@ def is_jetson():
 def get_jetson_gpu_metrics():
     """Get GPU metrics using tegrastats for Jetson devices."""
     try:
-        # Run tegrastats and get first line using head
-        result = subprocess.run(['tegrastats', '--interval', '1000', '|', 'head', '-n', '1'], 
-                              shell=True, capture_output=True, text=True, timeout=2)
+        # Run tegrastats with proper shell piping
+        cmd = "tegrastats --interval 1000 | head -n 1"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=2)
         print("Raw tegrastats output:", result.stdout)  # Debug print
         
         if result.returncode == 0:
