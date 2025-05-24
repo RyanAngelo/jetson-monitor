@@ -9,9 +9,16 @@ app = Flask(__name__)
 # Initialize NVML for GPU monitoring
 try:
     pynvml.nvmlInit()
-    GPU_AVAILABLE = True
-except pynvml.NVMLError:
+    device_count = pynvml.nvmlDeviceGetCount()
+    if device_count > 0:
+        GPU_AVAILABLE = True
+        print(f"Found {device_count} NVIDIA GPU(s)")
+    else:
+        GPU_AVAILABLE = False
+        print("No NVIDIA GPUs found")
+except pynvml.NVMLError as e:
     GPU_AVAILABLE = False
+    print(f"NVML initialization failed: {str(e)}")
 
 def get_system_metrics():
     """Collect and return system metrics including CPU, memory, disk, and GPU usage."""
@@ -35,10 +42,13 @@ def get_system_metrics():
             gpu_utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
             gpu_metrics = {
                 'gpu_memory_percent': (info.used / info.total) * 100,
-                'gpu_utilization': gpu_utilization.gpu
+                'gpu_utilization': gpu_utilization.gpu,
+                'gpu_memory_used': info.used / (1024 * 1024),  # Convert to MB
+                'gpu_memory_total': info.total / (1024 * 1024)  # Convert to MB
             }
-        except (pynvml.NVMLError, AttributeError) as e:
+        except pynvml.NVMLError as e:
             gpu_metrics = {'error': f'Failed to get GPU metrics: {str(e)}'}
+            print(f"GPU metrics error: {str(e)}")
     
     return {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
