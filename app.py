@@ -22,19 +22,25 @@ def get_jetson_gpu_metrics():
     """Get GPU metrics using tegrastats for Jetson devices."""
     try:
         # Run tegrastats for 1 second and get the output
-        result = subprocess.run(['tegrastats', '--interval', '1000', '--stop', '1'], 
+        result = subprocess.run(['tegrastats', '--interval', '1'], 
                               capture_output=True, text=True, timeout=2)
         if result.returncode == 0:
             # Parse the output (format: RAM CPU GPU EMC APE)
-            stats = result.stdout.strip().split()
-            if len(stats) >= 3:
-                gpu_util = float(stats[2].replace('%', ''))
-                return {
-                    'gpu_utilization': gpu_util,
-                    'gpu_memory_percent': gpu_util,  # On Jetson, GPU utilization includes memory
-                    'gpu_memory_used': 0,  # Not directly available from tegrastats
-                    'gpu_memory_total': 0  # Not directly available from tegrastats
-                }
+            # Example: 7.5G/15.7G CPU: 2% GPU: 0% EMC: 0% APE: 0%
+            stats = result.stdout.strip()
+            if 'GPU:' in stats:
+                # Extract GPU percentage
+                gpu_part = stats.split('GPU:')[1].split('%')[0].strip()
+                try:
+                    gpu_util = float(gpu_part)
+                    return {
+                        'gpu_utilization': gpu_util,
+                        'gpu_memory_percent': gpu_util,
+                        'gpu_memory_used': 0,
+                        'gpu_memory_total': 0
+                    }
+                except ValueError:
+                    print(f"Could not parse GPU value: {gpu_part}")
     except (subprocess.SubprocessError, ValueError) as e:
         print(f"Error getting Jetson GPU metrics: {str(e)}")
     return {'error': 'Failed to get GPU metrics'}
