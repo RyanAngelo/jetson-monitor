@@ -1,9 +1,8 @@
+from datetime import datetime
+
 from flask import Flask, render_template, jsonify
 import psutil
 import pynvml
-import os
-import time
-from datetime import datetime
 
 app = Flask(__name__)
 
@@ -11,10 +10,11 @@ app = Flask(__name__)
 try:
     pynvml.nvmlInit()
     GPU_AVAILABLE = True
-except:
+except pynvml.NVMLError:
     GPU_AVAILABLE = False
 
 def get_system_metrics():
+    """Collect and return system metrics including CPU, memory, disk, and GPU usage."""
     # CPU metrics
     cpu_percent = psutil.cpu_percent(interval=1)
     
@@ -37,8 +37,8 @@ def get_system_metrics():
                 'gpu_memory_percent': (info.used / info.total) * 100,
                 'gpu_utilization': gpu_utilization.gpu
             }
-        except:
-            gpu_metrics = {'error': 'Failed to get GPU metrics'}
+        except (pynvml.NVMLError, AttributeError) as e:
+            gpu_metrics = {'error': f'Failed to get GPU metrics: {str(e)}'}
     
     return {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -50,10 +50,12 @@ def get_system_metrics():
 
 @app.route('/')
 def index():
+    """Render the main dashboard page."""
     return render_template('index.html')
 
 @app.route('/metrics')
 def metrics():
+    """Return system metrics as JSON response."""
     return jsonify(get_system_metrics())
 
 if __name__ == '__main__':
