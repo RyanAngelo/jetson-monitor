@@ -21,12 +21,12 @@ def is_jetson():
 def get_jetson_gpu_metrics():
     """Get GPU metrics using tegrastats for Jetson devices."""
     try:
-        # Run tegrastats for 1 second and get the output
-        result = subprocess.run(['tegrastats', '--interval', '1'], 
-                              capture_output=True, text=True, timeout=2)
+        # Run tegrastats for a single reading
+        result = subprocess.run(['tegrastats'], 
+                              capture_output=True, text=True, timeout=1)
         if result.returncode == 0:
-            # Get the last line of output to avoid duplicate readings
-            stats = result.stdout.strip().split('\n')[-1]
+            # Get the output line
+            stats = result.stdout.strip()
             
             # Extract GR3D_FREQ (GPU usage)
             if 'GR3D_FREQ' in stats:
