@@ -25,12 +25,12 @@ def get_jetson_gpu_metrics():
         result = subprocess.run(['tegrastats', '--interval', '1'], 
                               capture_output=True, text=True, timeout=2)
         if result.returncode == 0:
-            # Parse the output (format: RAM CPU GPU EMC APE)
-            # Example: 7.5G/15.7G CPU: 2% GPU: 0% EMC: 0% APE: 0%
-            stats = result.stdout.strip()
-            if 'GPU:' in stats:
-                # Extract GPU percentage
-                gpu_part = stats.split('GPU:')[1].split('%')[0].strip()
+            # Get the last line of output to avoid duplicate readings
+            stats = result.stdout.strip().split('\n')[-1]
+            
+            # Extract GR3D_FREQ (GPU usage)
+            if 'GR3D_FREQ' in stats:
+                gpu_part = stats.split('GR3D_FREQ')[1].split('%')[0].strip()
                 try:
                     gpu_util = float(gpu_part)
                     return {
@@ -41,6 +41,8 @@ def get_jetson_gpu_metrics():
                     }
                 except ValueError:
                     print(f"Could not parse GPU value: {gpu_part}")
+            else:
+                print("No GR3D_FREQ found in output")
     except (subprocess.SubprocessError, ValueError) as e:
         print(f"Error getting Jetson GPU metrics: {str(e)}")
     return {'error': 'Failed to get GPU metrics'}
