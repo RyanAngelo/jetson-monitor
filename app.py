@@ -1,4 +1,7 @@
 from datetime import datetime
+import subprocess
+import platform
+import os
 
 from flask import Flask, render_template, jsonify
 import psutil
@@ -6,19 +9,62 @@ import pynvml
 
 app = Flask(__name__)
 
-# Initialize NVML for GPU monitoring
-try:
-    pynvml.nvmlInit()
-    device_count = pynvml.nvmlDeviceGetCount()
-    if device_count > 0:
-        GPU_AVAILABLE = True
-        print(f"Found {device_count} NVIDIA GPU(s)")
+def is_jetson():
+    """Check if the system is a Jetson device."""
+    try:
+        with open('/proc/device-tree/model', 'r') as f:
+            model = f.read().lower()
+            return 'jetson' in model
+    except:
+        return False
+
+def get_jetson_gpu_metrics():
+    """Get GPU metrics using tegrastats for Jetson devices."""
+    try:
+        # Run tegrastats for 1 second and get the output
+        result = subprocess.run(['tegrastats', '--interval', '1000', '--stop', '1'], 
+                              capture_output=True, text=True, timeout=2)
+        if result.returncode == 0:
+            # Parse the output (format: RAM CPU GPU EMC APE)
+            stats = result.stdout.strip().split()
+            if len(stats) >= 3:
+                gpu_util = float(stats[2].replace('%', ''))
+                return {
+                    'gpu_utilization': gpu_util,
+                    'gpu_memory_percent': gpu_util,  # On Jetson, GPU utilization includes memory
+                    'gpu_memory_used': 0,  # Not directly available from tegrastats
+                    'gpu_memory_total': 0  # Not directly available from tegrastats
+                }
+    except (subprocess.SubprocessError, ValueError) as e:
+        print(f"Error getting Jetson GPU metrics: {str(e)}")
+    return {'error': 'Failed to get GPU metrics'}
+
+def get_nvidia_gpu_metrics():
+    """Get GPU metrics using NVML for standard NVIDIA GPUs."""
+    try:
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        gpu_utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
+        return {
+            'gpu_utilization': gpu_utilization.gpu,
+            'gpu_memory_percent': (info.used / info.total) * 100,
+            'gpu_memory_used': info.used / (1024 * 1024),  # Convert to MB
+            'gpu_memory_total': info.total / (1024 * 1024)  # Convert to MB
+        }
+    except pynvml.NVMLError as e:
+        print(f"Error getting NVIDIA GPU metrics: {str(e)}")
+        return {'error': f'Failed to get GPU metrics: {str(e)}'}
+
+def get_gpu_metrics():
+    """Get GPU metrics based on the platform."""
+    if is_jetson():
+        return get_jetson_gpu_metrics()
     else:
-        GPU_AVAILABLE = False
-        print("No NVIDIA GPUs found")
-except pynvml.NVMLError as e:
-    GPU_AVAILABLE = False
-    print(f"NVML initialization failed: {str(e)}")
+        try:
+            pynvml.nvmlInit()
+            return get_nvidia_gpu_metrics()
+        except pynvml.NVMLError:
+            return {'error': 'No NVIDIA GPU detected'}
 
 def get_system_metrics():
     """Collect and return system metrics including CPU, memory, disk, and GPU usage."""
@@ -34,28 +80,19 @@ def get_system_metrics():
     disk_percent = disk.percent
     
     # GPU metrics
-    gpu_metrics = {}
-    if GPU_AVAILABLE:
-        try:
-            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-            info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            gpu_utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
-            gpu_metrics = {
-                'gpu_memory_percent': (info.used / info.total) * 100,
-                'gpu_utilization': gpu_utilization.gpu,
-                'gpu_memory_used': info.used / (1024 * 1024),  # Convert to MB
-                'gpu_memory_total': info.total / (1024 * 1024)  # Convert to MB
-            }
-        except pynvml.NVMLError as e:
-            gpu_metrics = {'error': f'Failed to get GPU metrics: {str(e)}'}
-            print(f"GPU metrics error: {str(e)}")
+    gpu_metrics = get_gpu_metrics()
     
     return {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'cpu_percent': cpu_percent,
         'memory_percent': memory_percent,
         'disk_percent': disk_percent,
-        'gpu_metrics': gpu_metrics
+        'gpu_metrics': gpu_metrics,
+        'platform': {
+            'system': platform.system(),
+            'machine': platform.machine(),
+            'is_jetson': is_jetson()
+        }
     }
 
 @app.route('/')
