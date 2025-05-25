@@ -2,6 +2,7 @@ from datetime import datetime
 import subprocess
 import platform
 import os
+import time
 
 from flask import Flask, render_template, jsonify
 import psutil
@@ -146,8 +147,11 @@ def get_system_metrics():
     disk_percent = disk.percent
     
     # Uptime
-    uptime_seconds = int(psutil.boot_time())
-    uptime_str = str(datetime.fromtimestamp(uptime_seconds))
+    uptime_seconds = int(time.time() - psutil.boot_time())
+    hours = uptime_seconds // 3600
+    minutes = (uptime_seconds % 3600) // 60
+    seconds = uptime_seconds % 60
+    uptime_str = f"{hours}h {minutes}m {seconds}s"
     
     # GPU metrics
     gpu_metrics = get_gpu_metrics()
