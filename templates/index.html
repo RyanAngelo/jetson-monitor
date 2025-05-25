@@ -144,6 +144,14 @@
                 <div class="metric-title">System Uptime</div>
                 <div class="metric-value" id="uptimeValue">-</div>
             </div>
+            <div class="metric-card">
+                <div class="metric-title">Network Sent</div>
+                <div class="metric-value" id="networkSentValue">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">Network Received</div>
+                <div class="metric-value" id="networkRecvValue">-</div>
+            </div>
         </div>
 
         <div class="chart-container">
@@ -185,6 +193,20 @@
                 data: [],
                 borderColor: '#F44336',
                 backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                tension: 0.1,
+                fill: true
+            }, {
+                label: 'Network Sent (MB)',
+                data: [],
+                borderColor: '#9C27B0',
+                backgroundColor: 'rgba(156, 39, 176, 0.1)',
+                tension: 0.1,
+                fill: true
+            }, {
+                label: 'Network Received (MB)',
+                data: [],
+                borderColor: '#FF9800',
+                backgroundColor: 'rgba(255, 152, 0, 0.1)',
                 tension: 0.1,
                 fill: true
             }]
@@ -244,6 +266,8 @@
                         document.getElementById('powerValue').textContent = `${gpuMetrics.total_power?.toFixed(0) || 0}mW`;
                         document.getElementById('gpuPowerValue').textContent = `${gpuMetrics.gpu_power?.toFixed(0) || 0}mW`;
                         document.getElementById('uptimeValue').textContent = data.uptime;
+                        document.getElementById('networkSentValue').textContent = data.network.bytes_sent_human;
+                        document.getElementById('networkRecvValue').textContent = data.network.bytes_recv_human;
                     }
                     
                     document.getElementById('timestamp').textContent = `Last updated: ${data.timestamp}`;
@@ -263,6 +287,8 @@
                     chartData.datasets[1].data.push(data.memory_percent);
                     chartData.datasets[2].data.push(data.disk_percent);
                     chartData.datasets[3].data.push(gpuMetrics?.gpu_utilization || 0);
+                    chartData.datasets[4].data.push(data.network.bytes_sent / (1024*1024));
+                    chartData.datasets[5].data.push(data.network.bytes_recv / (1024*1024));
 
                     // Update the chart with animation disabled for smoother updates
                     chart.update('none');

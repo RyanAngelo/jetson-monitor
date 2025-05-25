@@ -146,6 +146,15 @@ def get_system_metrics():
     disk = psutil.disk_usage('/')
     disk_percent = disk.percent
     
+    # Network metrics
+    net_io = psutil.net_io_counters()
+    network_metrics = {
+        'bytes_sent': net_io.bytes_sent,
+        'bytes_recv': net_io.bytes_recv,
+        'bytes_sent_human': f"{net_io.bytes_sent / (1024*1024):.1f} MB",
+        'bytes_recv_human': f"{net_io.bytes_recv / (1024*1024):.1f} MB"
+    }
+    
     # Uptime
     uptime_seconds = int(time.time() - psutil.boot_time())
     hours = uptime_seconds // 3600
@@ -162,6 +171,7 @@ def get_system_metrics():
         'memory_percent': memory_percent,
         'disk_percent': disk_percent,
         'uptime': uptime_str,
+        'network': network_metrics,
         'gpu_metrics': gpu_metrics,
         'platform': {
             'system': platform.system(),
