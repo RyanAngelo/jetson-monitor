@@ -148,11 +148,37 @@ def get_system_metrics():
     
     # Network metrics
     net_io = psutil.net_io_counters()
+    
+    # Get the current time
+    current_time = time.time()
+    
+    # Calculate network throughput if we have previous values
+    if not hasattr(get_system_metrics, 'prev_net_io'):
+        get_system_metrics.prev_net_io = net_io
+        get_system_metrics.prev_time = current_time
+        sent_speed = 0
+        recv_speed = 0
+    else:
+        time_diff = current_time - get_system_metrics.prev_time
+        if time_diff > 0:
+            sent_speed = (net_io.bytes_sent - get_system_metrics.prev_net_io.bytes_sent) / time_diff
+            recv_speed = (net_io.bytes_recv - get_system_metrics.prev_net_io.bytes_recv) / time_diff
+        else:
+            sent_speed = 0
+            recv_speed = 0
+        
+        get_system_metrics.prev_net_io = net_io
+        get_system_metrics.prev_time = current_time
+    
     network_metrics = {
         'bytes_sent': net_io.bytes_sent,
         'bytes_recv': net_io.bytes_recv,
         'bytes_sent_human': f"{net_io.bytes_sent / (1024*1024):.1f} MB",
-        'bytes_recv_human': f"{net_io.bytes_recv / (1024*1024):.1f} MB"
+        'bytes_recv_human': f"{net_io.bytes_recv / (1024*1024):.1f} MB",
+        'sent_speed': sent_speed,
+        'recv_speed': recv_speed,
+        'sent_speed_human': f"{sent_speed / 1024:.1f} KB/s",
+        'recv_speed_human': f"{recv_speed / 1024:.1f} KB/s"
     }
     
     # Uptime
