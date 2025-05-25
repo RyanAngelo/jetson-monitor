@@ -158,14 +158,18 @@
             <canvas id="metricsChart"></canvas>
         </div>
 
+        <div class="chart-container">
+            <canvas id="networkChart"></canvas>
+        </div>
+
         <div class="timestamp" id="timestamp"></div>
     </div>
 
     <script>
         let updateIntervalMs = 1000;
-        let chart;
+        let metricsChart, networkChart;
         const maxDataPoints = 60;
-        const chartData = {
+        const metricsChartData = {
             labels: [],
             datasets: [{
                 label: 'CPU Usage',
@@ -195,7 +199,12 @@
                 backgroundColor: 'rgba(244, 67, 54, 0.1)',
                 tension: 0.1,
                 fill: true
-            }, {
+            }]
+        };
+
+        const networkChartData = {
+            labels: [],
+            datasets: [{
                 label: 'Network Sent (KB/s)',
                 data: [],
                 borderColor: '#9C27B0',
@@ -212,17 +221,52 @@
             }]
         };
 
-        function initChart() {
-            const ctx = document.getElementById('metricsChart').getContext('2d');
-            chart = new Chart(ctx, {
+        function initCharts() {
+            const metricsCtx = document.getElementById('metricsChart').getContext('2d');
+            metricsChart = new Chart(metricsCtx, {
                 type: 'line',
-                data: chartData,
+                data: metricsChartData,
                 options: {
                     responsive: true,
                     scales: {
                         y: {
                             beginAtZero: true,
                             max: 100,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#b3b3b3'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#b3b3b3'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#b3b3b3'
+                            }
+                        }
+                    }
+                }
+            });
+
+            const networkCtx = document.getElementById('networkChart').getContext('2d');
+            networkChart = new Chart(networkCtx, {
+                type: 'line',
+                data: networkChartData,
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
                             grid: {
                                 color: 'rgba(255, 255, 255, 0.1)'
                             },
@@ -265,33 +309,38 @@
                         document.getElementById('cpuTempValue').textContent = `${gpuMetrics.cpu_temperature?.toFixed(1) || 0}°C`;
                         document.getElementById('powerValue').textContent = `${gpuMetrics.total_power?.toFixed(0) || 0}mW`;
                         document.getElementById('gpuPowerValue').textContent = `${gpuMetrics.gpu_power?.toFixed(0) || 0}mW`;
-                        document.getElementById('uptimeValue').textContent = data.uptime;
-                        document.getElementById('networkSentValue').textContent = data.network.sent_speed_human;
-                        document.getElementById('networkRecvValue').textContent = data.network.recv_speed_human;
                     }
+                    
+                    document.getElementById('uptimeValue').textContent = data.uptime;
+                    document.getElementById('networkSentValue').textContent = data.network.sent_speed_human;
+                    document.getElementById('networkRecvValue').textContent = data.network.recv_speed_human;
                     
                     document.getElementById('timestamp').textContent = `Last updated: ${data.timestamp}`;
 
-                    // Update chart
+                    // Update charts
                     const timestamp = new Date().toLocaleTimeString();
                     
-                    // Remove oldest data point if we've reached the maximum
-                    if (chartData.labels.length >= maxDataPoints) {
-                        chartData.labels.shift();
-                        chartData.datasets.forEach(dataset => dataset.data.shift());
+                    // Update metrics chart
+                    if (metricsChartData.labels.length >= maxDataPoints) {
+                        metricsChartData.labels.shift();
+                        metricsChartData.datasets.forEach(dataset => dataset.data.shift());
                     }
-                    
-                    // Add new data points
-                    chartData.labels.push(timestamp);
-                    chartData.datasets[0].data.push(data.cpu_percent);
-                    chartData.datasets[1].data.push(data.memory_percent);
-                    chartData.datasets[2].data.push(data.disk_percent);
-                    chartData.datasets[3].data.push(gpuMetrics?.gpu_utilization || 0);
-                    chartData.datasets[4].data.push(data.network.sent_speed / 1024);  // Convert to KB/s
-                    chartData.datasets[5].data.push(data.network.recv_speed / 1024);  // Convert to KB/s
+                    metricsChartData.labels.push(timestamp);
+                    metricsChartData.datasets[0].data.push(data.cpu_percent);
+                    metricsChartData.datasets[1].data.push(data.memory_percent);
+                    metricsChartData.datasets[2].data.push(data.disk_percent);
+                    metricsChartData.datasets[3].data.push(gpuMetrics?.gpu_utilization || 0);
+                    metricsChart.update('none');
 
-                    // Update the chart with animation disabled for smoother updates
-                    chart.update('none');
+                    // Update network chart
+                    if (networkChartData.labels.length >= maxDataPoints) {
+                        networkChartData.labels.shift();
+                        networkChartData.datasets.forEach(dataset => dataset.data.shift());
+                    }
+                    networkChartData.labels.push(timestamp);
+                    networkChartData.datasets[0].data.push(data.network.sent_speed / 1024);  // Convert to KB/s
+                    networkChartData.datasets[1].data.push(data.network.recv_speed / 1024);  // Convert to KB/s
+                    networkChart.update('none');
                 });
         }
 
@@ -303,7 +352,7 @@
         }
 
         // Initialize
-        initChart();
+        initCharts();
         let intervalId = setInterval(updateMetrics, updateIntervalMs);
         updateMetrics(); // Initial update
     </script>
