@@ -145,6 +145,10 @@ def get_system_metrics():
     disk = psutil.disk_usage('/')
     disk_percent = disk.percent
     
+    # Uptime
+    uptime_seconds = int(psutil.boot_time())
+    uptime_str = str(datetime.fromtimestamp(uptime_seconds))
+    
     # GPU metrics
     gpu_metrics = get_gpu_metrics()
     
@@ -153,6 +157,7 @@ def get_system_metrics():
         'cpu_percent': cpu_percent,
         'memory_percent': memory_percent,
         'disk_percent': disk_percent,
+        'uptime': uptime_str,
         'gpu_metrics': gpu_metrics,
         'platform': {
             'system': platform.system(),
