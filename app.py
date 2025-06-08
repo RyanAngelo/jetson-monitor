@@ -8,7 +8,7 @@ from flask import Flask, render_template, jsonify
 import psutil
 import pynvml
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 
 def is_jetson():
     """Check if the system is a Jetson device."""
@@ -133,6 +133,105 @@ def get_gpu_metrics():
         except pynvml.NVMLError:
             return {'error': 'No NVIDIA GPU detected'}
 
+def get_memory_pressure_metrics():
+    """Get memory pressure and swap metrics."""
+    try:
+        memory = psutil.virtual_memory()
+        swap = psutil.swap_memory()
+        
+        # Debug logging
+        print(f"Memory: {memory.percent}% used, {memory.available / (1024*1024):.1f} MB available")
+        print(f"Swap: {swap.percent}% used, {swap.used / (1024*1024):.1f} MB used")
+        
+        # Calculate memory pressure score (0-100)
+        # Factors: memory usage, swap usage, and available memory
+        memory_usage_component = memory.percent * 0.7
+        swap_component = swap.percent * 0.2
+        available_component = (100 - (memory.available / memory.total * 100)) * 0.1
+        
+        print(f"Components: Memory={memory_usage_component:.1f}, Swap={swap_component:.1f}, Available={available_component:.1f}")
+        
+        memory_pressure = memory_usage_component + swap_component + available_component
+        
+        # Cap the pressure at 100 and ensure it's not negative
+        memory_pressure = min(100, max(0, memory_pressure))
+        
+        # If memory usage is low (< 50%) and swap usage is low (< 20%), 
+        # cap the pressure at 50 to better reflect system state
+        if memory.percent < 50 and swap.percent < 20:
+            memory_pressure = min(memory_pressure, 50)
+            print("Low memory and swap usage detected, capping pressure at 50")
+        
+        print(f"Final pressure score: {memory_pressure:.1f}")
+        
+        return {
+            'memory_pressure': round(memory_pressure, 1),
+            'swap': {
+                'used': swap.used / (1024 * 1024),  # Convert to MB
+                'total': swap.total / (1024 * 1024),  # Convert to MB
+                'percent': swap.percent,
+                'free': swap.free / (1024 * 1024)  # Convert to MB
+            },
+            'memory': {
+                'available': memory.available / (1024 * 1024),  # Convert to MB
+                'total': memory.total / (1024 * 1024),  # Convert to MB
+                'percent': memory.percent
+            }
+        }
+    except Exception as e:
+        print(f"Error getting memory pressure metrics: {str(e)}")
+        return {
+            'memory_pressure': 0,
+            'swap': {'used': 0, 'total': 0, 'percent': 0, 'free': 0},
+            'memory': {'available': 0, 'total': 0, 'percent': 0}
+        }
+
+def get_thermal_throttling_status():
+    """Get thermal throttling status for CPU and GPU."""
+    try:
+        # For Jetson devices, we can get this from tegrastats
+        if is_jetson():
+            tegrastats_process = subprocess.Popen(['tegrastats', '--interval', '1000'], 
+                                                stdout=subprocess.PIPE, 
+                                                stderr=subprocess.PIPE,
+                                                text=True)
+            stats = tegrastats_process.stdout.readline().strip()
+            tegrastats_process.terminate()
+            tegrastats_process.wait(timeout=1)
+            
+            # Check for thermal throttling indicators in tegrastats output
+            cpu_throttled = 'CPU_THROTTLE' in stats
+            gpu_throttled = 'GPU_THROTTLE' in stats
+            
+            return {
+                'cpu_throttled': cpu_throttled,
+                'gpu_throttled': gpu_throttled,
+                'status': 'Throttled' if (cpu_throttled or gpu_throttled) else 'Normal'
+            }
+        else:
+            # For non-Jetson systems, we can check CPU thermal throttling
+            try:
+                with open('/sys/devices/system/cpu/cpu0/thermal_throttle/core_throttle_count', 'r') as f:
+                    throttle_count = int(f.read().strip())
+                return {
+                    'cpu_throttled': throttle_count > 0,
+                    'gpu_throttled': False,  # We don't have GPU throttling info for non-Jetson
+                    'status': 'Throttled' if throttle_count > 0 else 'Normal'
+                }
+            except:
+                return {
+                    'cpu_throttled': False,
+                    'gpu_throttled': False,
+                    'status': 'Unknown'
+                }
+    except Exception as e:
+        print(f"Error getting thermal throttling status: {str(e)}")
+        return {
+            'cpu_throttled': False,
+            'gpu_throttled': False,
+            'status': 'Error'
+        }
+
 def get_system_metrics():
     """Collect and return system metrics including CPU, memory, disk, and GPU usage."""
     # CPU metrics
@@ -141,6 +240,12 @@ def get_system_metrics():
     # Memory metrics
     memory = psutil.virtual_memory()
     memory_percent = memory.percent
+    
+    # Get memory pressure metrics
+    memory_pressure_metrics = get_memory_pressure_metrics()
+    
+    # Get thermal throttling status
+    thermal_status = get_thermal_throttling_status()
     
     # Disk metrics
     disk = psutil.disk_usage('/')
@@ -203,7 +308,9 @@ def get_system_metrics():
             'system': platform.system(),
             'machine': platform.machine(),
             'is_jetson': is_jetson()
-        }
+        },
+        'memory_pressure': memory_pressure_metrics,
+        'thermal_status': thermal_status
     }
 
 @app.route('/')

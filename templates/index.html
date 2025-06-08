@@ -5,95 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jetson Orin Nano Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #1a1a1a;
-            color: #ffffff;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .header h1 {
-            color: #00bcd4;
-        }
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        .metric-card {
-            background: #2d2d2d;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            transition: transform 0.2s;
-        }
-        .metric-card:hover {
-            transform: translateY(-2px);
-        }
-        .metric-title {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-            color: #b3b3b3;
-        }
-        .metric-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #00bcd4;
-        }
-        .chart-container {
-            background: #2d2d2d;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            margin-bottom: 20px;
-        }
-        .controls {
-            background: #2d2d2d;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            margin-bottom: 20px;
-        }
-        .controls label {
-            color: #b3b3b3;
-            margin-right: 10px;
-        }
-        .controls input {
-            background: #1a1a1a;
-            border: 1px solid #404040;
-            color: #ffffff;
-            padding: 5px 10px;
-            border-radius: 5px;
-            margin-right: 10px;
-        }
-        .controls button {
-            background: #00bcd4;
-            color: #ffffff;
-            border: none;
-            padding: 5px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .controls button:hover {
-            background: #0097a7;
-        }
-        .timestamp {
-            text-align: center;
-            color: #b3b3b3;
-            margin-top: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/monitor.js') }}"></script>
 </head>
 <body>
     <div class="container">
@@ -115,6 +28,16 @@
             <div class="metric-card">
                 <div class="metric-title">Memory Usage</div>
                 <div class="metric-value" id="memoryValue">0%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">Memory Pressure</div>
+                <div class="metric-value" id="memoryPressureValue">0</div>
+                <div class="metric-subtitle">Pressure Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">Swap Usage</div>
+                <div class="metric-value" id="swapValue">0%</div>
+                <div class="metric-subtitle" id="swapDetails">0 MB / 0 MB</div>
             </div>
             <div class="metric-card">
                 <div class="metric-title">Disk Usage</div>
@@ -141,6 +64,11 @@
                 <div class="metric-value" id="gpuPowerValue">0mW</div>
             </div>
             <div class="metric-card">
+                <div class="metric-title">Thermal Status</div>
+                <div class="metric-value" id="thermalStatusValue">-</div>
+                <div class="metric-subtitle" id="thermalDetails">-</div>
+            </div>
+            <div class="metric-card">
                 <div class="metric-title">System Uptime</div>
                 <div class="metric-value" id="uptimeValue">-</div>
             </div>
@@ -164,197 +92,5 @@
 
         <div class="timestamp" id="timestamp"></div>
     </div>
-
-    <script>
-        let updateIntervalMs = 1000;
-        let metricsChart, networkChart;
-        const maxDataPoints = 60;
-        const metricsChartData = {
-            labels: [],
-            datasets: [{
-                label: 'CPU Usage',
-                data: [],
-                borderColor: '#00bcd4',
-                backgroundColor: 'rgba(0, 188, 212, 0.1)',
-                tension: 0.1,
-                fill: true
-            }, {
-                label: 'Memory Usage',
-                data: [],
-                borderColor: '#4CAF50',
-                backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                tension: 0.1,
-                fill: true
-            }, {
-                label: 'Disk Usage',
-                data: [],
-                borderColor: '#FFC107',
-                backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                tension: 0.1,
-                fill: true
-            }, {
-                label: 'GPU Usage',
-                data: [],
-                borderColor: '#F44336',
-                backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                tension: 0.1,
-                fill: true
-            }]
-        };
-
-        const networkChartData = {
-            labels: [],
-            datasets: [{
-                label: 'Network Sent (KB/s)',
-                data: [],
-                borderColor: '#9C27B0',
-                backgroundColor: 'rgba(156, 39, 176, 0.1)',
-                tension: 0.1,
-                fill: true
-            }, {
-                label: 'Network Received (KB/s)',
-                data: [],
-                borderColor: '#FF9800',
-                backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                tension: 0.1,
-                fill: true
-            }]
-        };
-
-        function initCharts() {
-            const metricsCtx = document.getElementById('metricsChart').getContext('2d');
-            metricsChart = new Chart(metricsCtx, {
-                type: 'line',
-                data: metricsChartData,
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            },
-                            ticks: {
-                                color: '#b3b3b3'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            },
-                            ticks: {
-                                color: '#b3b3b3'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#b3b3b3'
-                            }
-                        }
-                    }
-                }
-            });
-
-            const networkCtx = document.getElementById('networkChart').getContext('2d');
-            networkChart = new Chart(networkCtx, {
-                type: 'line',
-                data: networkChartData,
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            },
-                            ticks: {
-                                color: '#b3b3b3'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            },
-                            ticks: {
-                                color: '#b3b3b3'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#b3b3b3'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function updateMetrics() {
-            fetch('/metrics')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('cpuValue').textContent = `${data.cpu_percent.toFixed(1)}%`;
-                    document.getElementById('memoryValue').textContent = `${data.memory_percent.toFixed(1)}%`;
-                    document.getElementById('diskValue').textContent = `${data.disk_percent.toFixed(1)}%`;
-                    
-                    const gpuMetrics = data.gpu_metrics;
-                    if (gpuMetrics && !gpuMetrics.error) {
-                        document.getElementById('gpuValue').textContent = `${gpuMetrics.gpu_utilization.toFixed(1)}%`;
-                        document.getElementById('gpuTempValue').textContent = `${gpuMetrics.gpu_temperature?.toFixed(1) || 0}°C`;
-                        document.getElementById('cpuTempValue').textContent = `${gpuMetrics.cpu_temperature?.toFixed(1) || 0}°C`;
-                        document.getElementById('powerValue').textContent = `${gpuMetrics.total_power?.toFixed(0) || 0}mW`;
-                        document.getElementById('gpuPowerValue').textContent = `${gpuMetrics.gpu_power?.toFixed(0) || 0}mW`;
-                    }
-                    
-                    document.getElementById('uptimeValue').textContent = data.uptime;
-                    document.getElementById('networkSentValue').textContent = data.network.sent_speed_human;
-                    document.getElementById('networkRecvValue').textContent = data.network.recv_speed_human;
-                    
-                    document.getElementById('timestamp').textContent = `Last updated: ${data.timestamp}`;
-
-                    // Update charts
-                    const timestamp = new Date().toLocaleTimeString();
-                    
-                    // Update metrics chart
-                    if (metricsChartData.labels.length >= maxDataPoints) {
-                        metricsChartData.labels.shift();
-                        metricsChartData.datasets.forEach(dataset => dataset.data.shift());
-                    }
-                    metricsChartData.labels.push(timestamp);
-                    metricsChartData.datasets[0].data.push(data.cpu_percent);
-                    metricsChartData.datasets[1].data.push(data.memory_percent);
-                    metricsChartData.datasets[2].data.push(data.disk_percent);
-                    metricsChartData.datasets[3].data.push(gpuMetrics?.gpu_utilization || 0);
-                    metricsChart.update('none');
-
-                    // Update network chart
-                    if (networkChartData.labels.length >= maxDataPoints) {
-                        networkChartData.labels.shift();
-                        networkChartData.datasets.forEach(dataset => dataset.data.shift());
-                    }
-                    networkChartData.labels.push(timestamp);
-                    networkChartData.datasets[0].data.push(data.network.sent_speed / 1024);  // Convert to KB/s
-                    networkChartData.datasets[1].data.push(data.network.recv_speed / 1024);  // Convert to KB/s
-                    networkChart.update('none');
-                });
-        }
-
-        function updateInterval() {
-            const newInterval = document.getElementById('updateInterval').value;
-            updateIntervalMs = newInterval * 1000;
-            clearInterval(intervalId);
-            intervalId = setInterval(updateMetrics, updateIntervalMs);
-        }
-
-        // Initialize
-        initCharts();
-        let intervalId = setInterval(updateMetrics, updateIntervalMs);
-        updateMetrics(); // Initial update
-    </script>
 </body>
 </html> 
