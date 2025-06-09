@@ -15,6 +15,12 @@ function createMemoryPressureChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 10
+                }
+            },
             animation: {
                 duration: 0
             },
@@ -82,11 +88,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set a minimum height for mobile
         const isMobile = window.innerWidth < 768;
         chartContainer.style.height = isMobile ? '300px' : '200px';
+        chartContainer.style.width = '100%';
         
         // Update height on window resize
         window.addEventListener('resize', function() {
             const isMobile = window.innerWidth < 768;
             chartContainer.style.height = isMobile ? '300px' : '200px';
+            chartContainer.style.width = '100%';
         });
     }
 }); 

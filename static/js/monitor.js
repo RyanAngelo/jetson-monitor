@@ -76,6 +76,13 @@ const chartConfig = {
     type: 'line',
     options: {
         responsive: true,
+        maintainAspectRatio: false,
+        layout: {
+            padding: {
+                left: 10,
+                right: 10
+            }
+        },
         scales: {
             y: {
                 beginAtZero: true,
@@ -92,14 +99,19 @@ const chartConfig = {
                     color: 'rgba(255, 255, 255, 0.1)'
                 },
                 ticks: {
-                    color: '#b3b3b3'
+                    color: '#b3b3b3',
+                    maxRotation: 0,
+                    autoSkip: true,
+                    maxTicksLimit: 6
                 }
             }
         },
         plugins: {
             legend: {
                 labels: {
-                    color: '#b3b3b3'
+                    color: '#b3b3b3',
+                    boxWidth: 12,
+                    padding: 10
                 }
             }
         }
@@ -119,6 +131,12 @@ function initCharts() {
         ...chartConfig,
         data: networkChartData
     });
+
+    // Force chart resize
+    setTimeout(() => {
+        metricsChart.resize();
+        networkChart.resize();
+    }, 100);
 }
 
 // Update metrics display
