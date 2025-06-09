@@ -24,6 +24,7 @@ function createMemoryPressureChart() {
                     max: 100,
                     ticks: {
                         stepSize: 20,
+                        color: '#ffffff',
                         callback: function(value) {
                             if (value <= 30) return 'Low';
                             if (value <= 70) return 'Moderate';
@@ -35,7 +36,7 @@ function createMemoryPressureChart() {
                             const value = context.tick.value;
                             if (value === 30) return 'rgba(0, 255, 0, 0.2)';
                             if (value === 70) return 'rgba(255, 0, 0, 0.2)';
-                            return 'rgba(0, 0, 0, 0.1)';
+                            return 'rgba(255, 255, 255, 0.1)';
                         }
                     }
                 },
@@ -43,7 +44,11 @@ function createMemoryPressureChart() {
                     ticks: {
                         maxRotation: 0,
                         autoSkip: true,
-                        maxTicksLimit: 6
+                        maxTicksLimit: 6,
+                        color: '#ffffff'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
                     }
                 }
             },
@@ -52,6 +57,9 @@ function createMemoryPressureChart() {
                     display: false
                 },
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
                     callbacks: {
                         label: function(context) {
                             const value = context.raw;
