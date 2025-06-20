@@ -1,6 +1,6 @@
-# Jetson Orin Nano Monitor
+# Jetson Monitor
 
-A real-time web-based monitoring dashboard for Jetson Orin Nano devices. This application provides a comprehensive interface to monitor system resources, performance metrics, and thermal status.
+A real-time web-based monitoring dashboard for Jetson devices. This application provides a comprehensive interface to monitor system resources, performance metrics, and thermal status.
 
 ## Features
 
@@ -45,7 +45,7 @@ A real-time web-based monitoring dashboard for Jetson Orin Nano devices. This ap
 ## Requirements
 
 - Python 3.6 or higher
-- Jetson Orin Nano with NVIDIA drivers installed
+- Jetson device with NVIDIA drivers installed
 - Required Python packages:
   - Flask 3.0.2
   - psutil 5.9.8
