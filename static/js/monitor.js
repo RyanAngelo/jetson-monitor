@@ -72,7 +72,7 @@ const networkChartData = {
 };
 
 // Chart configuration
-const chartConfig = {
+const metricsChartConfig = {
     type: 'line',
     options: {
         responsive: true,
@@ -118,17 +118,81 @@ const chartConfig = {
     }
 };
 
+const networkChartConfig = {
+    type: 'line',
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: {
+            padding: {
+                left: 10,
+                right: 10
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.1)'
+                },
+                ticks: {
+                    color: '#b3b3b3',
+                    callback: function(value) {
+                        if (value >= 1024) {
+                            return (value / 1024).toFixed(1) + ' MB/s';
+                        } else {
+                            return value.toFixed(0) + ' KB/s';
+                        }
+                    }
+                }
+            },
+            x: {
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.1)'
+                },
+                ticks: {
+                    color: '#b3b3b3',
+                    maxRotation: 0,
+                    autoSkip: true,
+                    maxTicksLimit: 6
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                labels: {
+                    color: '#b3b3b3',
+                    boxWidth: 12,
+                    padding: 10
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const value = context.raw;
+                        if (value >= 1024) {
+                            return context.dataset.label.replace('(KB/s)', '(MB/s)') + ': ' + (value / 1024).toFixed(2) + ' MB/s';
+                        } else {
+                            return context.dataset.label + ': ' + value.toFixed(1) + ' KB/s';
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
 // Initialize charts
 function initCharts() {
     const metricsCtx = document.getElementById('metricsChart').getContext('2d');
     metricsChart = new Chart(metricsCtx, {
-        ...chartConfig,
+        ...metricsChartConfig,
         data: metricsChartData
     });
 
     const networkCtx = document.getElementById('networkChart').getContext('2d');
     networkChart = new Chart(networkCtx, {
-        ...chartConfig,
+        ...networkChartConfig,
         data: networkChartData
     });
 
