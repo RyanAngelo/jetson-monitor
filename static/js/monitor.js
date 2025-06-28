@@ -1,6 +1,6 @@
 // Chart configuration
 const maxDataPoints = 60;
-let updateIntervalMs = 1000;
+let updateIntervalMs = 5000;
 let metricsChart, networkChart;
 let intervalId;
 
