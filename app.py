@@ -232,6 +232,17 @@ def get_thermal_throttling_status():
             'status': 'Error'
         }
 
+def format_bytes(bytes_value):
+    """Format bytes into human readable format with appropriate units."""
+    if bytes_value >= 1024**3:  # GB
+        return f"{bytes_value / (1024**3):.2f} GB"
+    elif bytes_value >= 1024**2:  # MB
+        return f"{bytes_value / (1024**2):.1f} MB"
+    elif bytes_value >= 1024:  # KB
+        return f"{bytes_value / 1024:.1f} KB"
+    else:
+        return f"{bytes_value} B"
+
 def get_system_metrics():
     """Collect and return system metrics including CPU, memory, disk, and GPU usage."""
     # CPU metrics
@@ -278,8 +289,8 @@ def get_system_metrics():
     network_metrics = {
         'bytes_sent': net_io.bytes_sent,
         'bytes_recv': net_io.bytes_recv,
-        'bytes_sent_human': f"{net_io.bytes_sent / (1024*1024):.1f} MB",
-        'bytes_recv_human': f"{net_io.bytes_recv / (1024*1024):.1f} MB",
+        'bytes_sent_human': format_bytes(net_io.bytes_sent),
+        'bytes_recv_human': format_bytes(net_io.bytes_recv),
         'sent_speed': sent_speed,
         'recv_speed': recv_speed,
         'sent_speed_human': f"{sent_speed / 1024:.1f} KB/s",

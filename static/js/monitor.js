@@ -230,6 +230,8 @@ function updateMetricsDisplay(data) {
     // Update network metrics
     document.getElementById('networkSentValue').textContent = data.network.sent_speed_human;
     document.getElementById('networkRecvValue').textContent = data.network.recv_speed_human;
+    document.getElementById('totalNetworkSentValue').textContent = data.network.bytes_sent_human;
+    document.getElementById('totalNetworkRecvValue').textContent = data.network.bytes_recv_human;
     
     // Update timestamp
     document.getElementById('timestamp').textContent = `Last updated: ${data.timestamp}`;
