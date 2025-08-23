@@ -117,15 +117,25 @@ http://localhost:5005
 
 ```
 jetson-monitor/
-├── app.py              # Main application file
-├── requirements.txt    # Python dependencies
+├── app.py                 # Main application file
+├── requirements.txt       # Python dependencies
+├── requirements-test.txt  # Test dependencies
+├── run_tests.py          # Test runner script
+├── Makefile              # Build and test commands
+├── pytest.ini           # pytest configuration
 ├── static/
 │   ├── css/
-│   │   └── style.css  # Stylesheet
+│   │   └── style.css     # Stylesheet
 │   └── js/
-│       └── monitor.js # Frontend logic
-└── templates/
-    └── index.html     # Main dashboard template
+│       ├── charts.js     # Chart functionality
+│       └── monitor.js    # Frontend logic
+├── templates/
+│   └── index.html        # Main dashboard template
+└── tests/
+    ├── __init__.py       # Tests package
+    ├── test_app.py       # Unit tests
+    ├── test_integration.py # Integration tests
+    └── README.md         # Test documentation
 ```
 
 ## Notes
@@ -136,9 +146,74 @@ jetson-monitor/
 - Memory pressure scoring is weighted to prioritize memory usage and swap utilization
 - Thermal monitoring is optimized for Jetson devices but works on other systems
 
+## Testing
+
+The project includes a comprehensive test suite with both unit and integration tests.
+
+### Running Tests
+
+#### Using Make (Recommended)
+```bash
+# Run all tests
+make test
+
+# Run tests with verbose output
+make test-verbose
+
+# Run tests with coverage report
+make test-coverage
+
+# Run only unit tests
+make test-unit
+
+# Run only integration tests
+make test-integration
+```
+
+#### Using the Test Runner
+```bash
+# Run all tests
+python run_tests.py
+
+# Run with verbose output
+python run_tests.py -v
+
+# Run with coverage report
+python run_tests.py --coverage
+```
+
+#### Using pytest (if installed)
+```bash
+# Install test dependencies
+pip install -r requirements-test.txt
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=app --cov-report=html
+```
+
+### Test Coverage
+
+The test suite covers:
+- **Unit Tests**: All major functions with mocked dependencies
+- **Integration Tests**: Flask application endpoints and JSON responses
+- **Error Handling**: Various error conditions and edge cases
+- **Platform Compatibility**: Both Jetson and non-Jetson systems
+
+For detailed test documentation, see [tests/README.md](tests/README.md).
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Development Guidelines
+
+1. **Write Tests**: All new features should include appropriate tests
+2. **Run Tests**: Ensure all tests pass before submitting changes
+3. **Follow Style**: Use the existing code style and patterns
+4. **Documentation**: Update documentation for any new features
 
 ## License
 
